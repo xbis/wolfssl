@@ -3351,6 +3351,7 @@ static int DoTls13EncryptedExtensions(WOLFSSL* ssl, const byte* input,
     return ret;
 }
 
+#ifndef NO_CERTS
 /* handle processing TLS v1.3 certificate_request (13) */
 /* Handle a TLS v1.3 CertificateRequest message.
  * This message is always encrypted.
@@ -3379,9 +3380,6 @@ static int DoTls13CertificateRequest(WOLFSSL* ssl, const byte* input,
     WOLFSSL_START(WC_FUNC_CERTIFICATE_REQUEST_DO);
     WOLFSSL_ENTER("DoTls13CertificateRequest");
 
-#ifndef WOLFSSL_TLS13_DRAFT_18
-    XMEMSET(&peerSuites, 0, sizeof(Suites));
-#endif
 #ifdef WOLFSSL_CALLBACKS
     if (ssl->hsInfoOn) AddPacketName(ssl, "CertificateRequest");
     if (ssl->toInfoOn) AddLateName("CertificateRequest", &ssl->timeoutInfo);
@@ -3508,6 +3506,7 @@ static int DoTls13CertificateRequest(WOLFSSL* ssl, const byte* input,
     return ret;
 }
 
+#endif  /* NO_CERTS */
 #endif /* !NO_WOLFSSL_CLIENT */
 
 #ifndef NO_WOLFSSL_SERVER
@@ -3585,7 +3584,7 @@ static int DoPreSharedKeys(WOLFSSL* ssl, const byte* input, word32 helloSz,
         return PSK_KEY_ERROR;
 
     /* Assume we are going to resume with a pre-shared key. */
-    ssl->options.resuming = 1;
+    ssl->options.resuming = 0; // 1;
 
     /* Find the pre-shared key extension and calculate hash of truncated
      * ClientHello for binders.
@@ -6320,6 +6319,8 @@ exit_dcv:
 }
 #endif /* !NO_RSA || HAVE_ECC */
 
+#endif /* NO_CERTS */
+
 /* Parse and handle a TLS v1.3 Finished message.
  *
  * ssl       The SSL/TLS object.
@@ -6426,7 +6427,7 @@ static int DoTls13Finished(WOLFSSL* ssl, const byte* input, word32* inOutIdx,
 
     return 0;
 }
-#endif /* NO_CERTS */
+// # endif /* NO_CERTS */
 
 /* Send the TLS v1.3 Finished message.
  *

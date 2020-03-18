@@ -4298,9 +4298,6 @@ int EccMakeKey(WOLFSSL* ssl, ecc_key* key, ecc_key* peer)
     /* make sure the curve is set for TLS */
     if (ret == 0 && key->dp) {
         ssl->ecdhCurveOID = key->dp->oidSum;
-    #if defined(WOLFSSL_TLS13) || defined(HAVE_FFDHE)
-        ssl->namedGroup = 0;
-    #endif
     }
 
     /* Handle async pending response */
@@ -4603,9 +4600,6 @@ static int X25519MakeKey(WOLFSSL* ssl, curve25519_key* key,
 
     if (ret == 0) {
         ssl->ecdhCurveOID = ECC_X25519_OID;
-    #if defined(WOLFSSL_TLS13) || defined(HAVE_FFDHE)
-        ssl->namedGroup = 0;
-    #endif
     }
 
     /* Handle async pending response */
@@ -4905,9 +4899,6 @@ static int X448MakeKey(WOLFSSL* ssl, curve448_key* key, curve448_key* peer)
 
     if (ret == 0) {
         ssl->ecdhCurveOID = ECC_X448_OID;
-    #if defined(WOLFSSL_TLS13) || defined(HAVE_FFDHE)
-        ssl->namedGroup = 0;
-    #endif
     }
 
     /* Handle async pending response */
@@ -5676,7 +5667,6 @@ int InitSSL(WOLFSSL* ssl, WOLFSSL_CTX* ctx, int writeDup)
     ssl->options.haveEMS = ctx->haveEMS;
 #endif
     ssl->options.useClientOrder = ctx->useClientOrder;
-    ssl->options.mutualAuth = ctx->mutualAuth;
 
 #ifdef WOLFSSL_TLS13
     #ifdef HAVE_SESSION_TICKET
@@ -7319,7 +7309,8 @@ ProtocolVersion MakeDTLSv1_2(void)
 #endif /* WOLFSSL_DTLS */
 
 
-#ifndef NO_ASN_TIME
+
+
 #if defined(USER_TICKS)
 #if 0
     word32 LowResTimer(void)
@@ -7534,7 +7525,6 @@ ProtocolVersion MakeDTLSv1_2(void)
         return (word32)XTIME(0);
     }
 #endif
-#endif /* !NO_ASN_TIME */
 #if !defined(WOLFSSL_NO_CLIENT_AUTH) && \
                ((defined(HAVE_ED25519) && !defined(NO_ED25519_CLIENT_AUTH)) || \
                 (defined(HAVE_ED448) && !defined(NO_ED448_CLIENT_AUTH)))
@@ -7568,7 +7558,7 @@ static int EdDSA_Update(WOLFSSL* ssl, const byte* data, int sz)
 }
 #endif /* (HAVE_ED25519 || HAVE_ED448) && !WOLFSSL_NO_CLIENT_AUTH */
 
-#ifndef NO_CERTS
+//#ifndef NO_CERTS
 int HashOutputRaw(WOLFSSL* ssl, const byte* output, int sz)
 {
     int ret = 0;
@@ -7619,7 +7609,7 @@ int HashOutputRaw(WOLFSSL* ssl, const byte* output, int sz)
 
     return ret;
 }
-#endif /* NO_CERTS */
+//#endif /* NO_CERTS */
 
 
 /* add output to md5 and sha handshake hashes, exclude record header */
@@ -9839,17 +9829,6 @@ static void DoCertFatalAlert(WOLFSSL* ssl, int ret)
         alertWhy = certificate_revoked;
     }
 #endif
-    else if (ret == NO_PEER_CERT) {
-#ifdef WOLFSSL_TLS13
-        if (ssl->options.tls1_3) {
-            alertWhy = certificate_required;
-        }
-        else
-#endif
-        {
-            alertWhy = handshake_failure;
-        }
-    }
 
     /* send fatal alert and mark connection closed */
     SendAlert(ssl, alert_fatal, alertWhy); /* try to send */
@@ -10620,12 +10599,6 @@ int ProcessPeerCerts(WOLFSSL* ssl, byte* input, word32* inOutIdx,
 
             args->count = args->totalCerts;
             args->certIdx = 0; /* select peer cert (first one) */
-
-            if (args->count == 0 && ssl->options.mutualAuth &&
-                                      ssl->options.side == WOLFSSL_SERVER_END) {
-                ret = NO_PEER_CERT;
-                DoCertFatalAlert(ssl, ret);
-            }
 
             args->dCertInit = 0;
         #ifndef WOLFSSL_SMALL_CERT_VERIFY
@@ -12077,8 +12050,7 @@ static int SanityCheckMsgReceived(WOLFSSL* ssl, byte type)
 
                 #ifndef NO_PSK
                     if (ssl->specs.kea == psk_kea &&
-                        ssl->arrays != NULL &&
-                        ssl->arrays->server_hint[0] == 0)
+                                               ssl->arrays->server_hint[0] == 0)
                         pskNoServerHint = 1;
                 #endif
                 if (ssl->specs.static_ecdh == 1 ||
@@ -15672,6 +15644,7 @@ static int BuildSHA_CertVerify(WOLFSSL* ssl, byte* digest)
     return ret;
 }
 #endif /* !NO_SHA && (!NO_OLD_TLS || WOLFSSL_ALLOW_TLS_SHA1) */
+#endif /* !NO_CERTS */
 
 int BuildCertHashes(WOLFSSL* ssl, Hashes* hashes)
 {
@@ -15728,7 +15701,7 @@ int BuildCertHashes(WOLFSSL* ssl, Hashes* hashes)
     return ret;
 }
 
-#endif /* !NO_CERTS */
+// # endif /* !NO_CERTS */
 
 #ifndef WOLFSSL_NO_TLS12
 /* Persistable BuildMessage arguments */
@@ -18895,6 +18868,7 @@ int PickHashSigAlgo(WOLFSSL* ssl, const byte* hashSigAlgo, word32 hashSigAlgoSz)
                                       ssl->suites->sigAlgo == ecc_dsa_sa_algo) {
                 ssl->suites->sigAlgo = sigAlgo;
                 ssl->suites->hashAlgo = sha512_mac;
+                ssl->namedGroup = 0;
                 ret = 0;
                 break;
             }
@@ -18909,6 +18883,7 @@ int PickHashSigAlgo(WOLFSSL* ssl, const byte* hashSigAlgo, word32 hashSigAlgoSz)
                                       ssl->suites->sigAlgo == ecc_dsa_sa_algo) {
                 ssl->suites->sigAlgo = sigAlgo;
                 ssl->suites->hashAlgo = sha512_mac;
+                ssl->namedGroup = 0;
                 ret = 0;
                 break;
             }
@@ -18930,9 +18905,7 @@ int PickHashSigAlgo(WOLFSSL* ssl, const byte* hashSigAlgo, word32 hashSigAlgoSz)
             if (digestSz == ssl->eccTempKeySz) {
                 ssl->suites->hashAlgo = hashAlgo;
                 ssl->suites->sigAlgo = sigAlgo;
-            #if defined(WOLFSSL_TLS13) || defined(HAVE_FFDHE)
                 ssl->namedGroup = 0;
-            #endif
                 ret = 0;
                 break; /* done selected sig/hash algorithms */
             }
@@ -20790,9 +20763,6 @@ static int DoServerKeyExchange(WOLFSSL* ssl, const byte* input,
                         ERROR_OUT(ECC_CURVE_ERROR, exit_dske);
                     }
                     ssl->ecdhCurveOID = curveOid;
-                #if defined(WOLFSSL_TLS13) || defined(HAVE_FFDHE)
-                    ssl->namedGroup = 0;
-                #endif
 
                     length = input[args->idx++];
                     if ((args->idx - args->begin) + length > size) {

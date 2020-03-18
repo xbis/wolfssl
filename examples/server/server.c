@@ -614,24 +614,23 @@ static const char* server_usage_msg[][49] = {
 #ifdef HAVE_SESSION_TICKET
         "-T          Do not generate session ticket\n",                 /* 44 */
 #endif
-        "-F          Send alert if no mutual authentication\n",         /* 45 */
 #ifdef WOLFSSL_POST_HANDSHAKE_AUTH
-        "-Q          Request certificate from client post-handshake\n", /* 46 */
+        "-Q          Request certificate from client post-handshake\n", /* 45 */
 #endif
 #ifdef WOLFSSL_SEND_HRR_COOKIE
-        "-J          Server sends Cookie Extension containing state\n", /* 47 */
+        "-J          Server sends Cookie Extension containing state\n", /* 46 */
 #endif
 #endif /* WOLFSSL_TLS13 */
 #ifdef WOLFSSL_EARLY_DATA
-        "-0          Early data read from client (0-RTT handshake)\n",  /* 48 */
+        "-0          Early data read from client (0-RTT handshake)\n",  /* 47 */
 #endif
 #ifdef WOLFSSL_MULTICAST
-        "-3 <grpid>  Multicast, grpid < 256\n",                         /* 49 */
+        "-3 <grpid>  Multicast, grpid < 256\n",                         /* 48 */
 #endif
         "-1 <num>    Display a result by specified language."
-                             "\n            0: English, 1: Japanese\n", /* 50 */
+                             "\n            0: English, 1: Japanese\n", /* 49 */
 #ifdef HAVE_TRUSTED_CA
-        "-5          Use Trusted CA Key Indication\n",                  /* 53 */
+        "-5          Use Trusted CA Key Indication\n",                  /* 52 */
 #endif
 #ifdef HAVE_CURVE448
         "-8          Pre-generate Key share using Curve448 only\n",     /* 55 */
@@ -735,26 +734,25 @@ static const char* server_usage_msg[][49] = {
 #ifdef HAVE_SESSION_TICKET
         "-T         セッションチケットを生成しない\n",                  /* 44 */
 #endif
-        "-F          Send alert if no mutual authentication\n",         /* 45 */
 #ifdef WOLFSSL_POST_HANDSHAKE_AUTH
         "-Q          クライアントのポストハンドシェイクから"
-                                              "証明書を要求する\n",     /* 46 */
+                                              "証明書を要求する\n",     /* 45 */
 #endif
 #ifdef WOLFSSL_SEND_HRR_COOKIE
-        "-J          サーバーの状態を含むTLS Cookie 拡張を送信する\n",  /* 47 */
+        "-J          サーバーの状態を含むTLS Cookie 拡張を送信する\n",  /* 46 */
 #endif
 #endif /* WOLFSSL_TLS13 */
 #ifdef WOLFSSL_EARLY_DATA
         "-0          クライアントからの Early Data 読み取り"
-                                      "（0-RTTハンドシェイク）\n",      /* 48 */
+                                      "（0-RTTハンドシェイク）\n",      /* 47 */
 #endif
 #ifdef WOLFSSL_MULTICAST
-        "-3 <grpid>  マルチキャスト, grpid < 256\n",                    /* 49 */
+        "-3 <grpid>  マルチキャスト, grpid < 256\n",                    /* 48 */
 #endif
         "-1 <num>    指定された言語で結果を表示します。"
-                                 "\n            0: 英語、 1: 日本語\n", /* 50 */
+                                 "\n            0: 英語、 1: 日本語\n", /* 49 */
 #ifdef HAVE_TRUSTED_CA
-        "-5          信頼できる認証局の鍵表示を使用する\n",             /* 53 */
+        "-5          信頼できる認証局の鍵表示を使用する\n",             /* 52 */
 #endif
 #ifdef HAVE_CURVE448
         "-8          Pre-generate Key share using Curve448 only\n",     /* 55 */
@@ -854,7 +852,6 @@ static void Usage(void)
 #ifdef HAVE_SESSION_TICKET
     printf("%s", msg[++msgId]);     /* -T */
 #endif
-    printf("%s", msg[++msgId]);     /* -F */
 #ifdef WOLFSSL_POST_HANDSHAKE_AUTH
     printf("%s", msg[++msgId]);     /* -Q */
 #endif
@@ -989,7 +986,6 @@ THREAD_RETURN WOLFSSL_THREAD server_test(void* args)
     int noPskDheKe = 0;
 #endif
     int updateKeysIVs = 0;
-    int mutualAuth = 0;
     int postHandAuth = 0;
 #ifdef WOLFSSL_EARLY_DATA
     int earlyData = 0;
@@ -1075,7 +1071,6 @@ THREAD_RETURN WOLFSSL_THREAD server_test(void* args)
     (void)crlFlags;
     (void)readySignal;
     (void)updateKeysIVs;
-    (void)mutualAuth;
     (void)postHandAuth;
     (void)mcastID;
     (void)loadCertKeyIntoSSLObj;
@@ -1092,7 +1087,7 @@ THREAD_RETURN WOLFSSL_THREAD server_test(void* args)
     /* Not Used: h, z, F, T, V, W, X */
     while ((ch = mygetopt(argc, argv, "?:"
                 "abc:defgijk:l:mnop:q:rstuv:wxy"
-                "A:B:C:D:E:FGH:IJKL:MNO:PQR:S:TUVYZ:"
+                "A:B:C:D:E:GH:IJKL:MNO:PQR:S:TUVYZ:"
                 "01:23:4:58")) != -1) {
         switch (ch) {
             case '?' :
@@ -1405,10 +1400,6 @@ THREAD_RETURN WOLFSSL_THREAD server_test(void* args)
                 #ifdef WOLFSSL_TLS13
                     updateKeysIVs = 1;
                 #endif
-                break;
-
-            case 'F' :
-                    mutualAuth = 1;
                 break;
 
             case 'Q' :
@@ -1746,7 +1737,8 @@ THREAD_RETURN WOLFSSL_THREAD server_test(void* args)
         #elif defined(HAVE_NULL_CIPHER)
                 defaultCipherList = "PSK-NULL-SHA256";
         #else
-                defaultCipherList = "PSK-AES128-CBC-SHA256";
+                //defaultCipherList = "PSK-AES128-CBC-SHA256";
+            defaultCipherList = "TLS13-AES128-CCM-SHA256";
         #endif
             if (SSL_CTX_set_cipher_list(ctx, defaultCipherList)
                 != WOLFSSL_SUCCESS)
@@ -1754,10 +1746,6 @@ THREAD_RETURN WOLFSSL_THREAD server_test(void* args)
         }
 #endif
     }
-#ifndef NO_CERTS
-    if (mutualAuth)
-        wolfSSL_CTX_mutual_auth(ctx, 1);
-#endif
 
 
 #ifdef HAVE_ECC
